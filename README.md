@@ -6,6 +6,10 @@ Pipeline dữ liệu thời gian thực mô phỏng luồng đơn hàng bán l�
 
 ## Demo
 
+
+https://github.com/user-attachments/assets/ede3ad86-ca41-45ef-8338-9863f36f9a55
+
+
 ![Dashboard Superset](images/dashboard.png)
 
 ![Các tiến trình đang chạy](images/pipeline-running.png)
