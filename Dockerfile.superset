@@ -1,0 +1,11 @@
+# Image Superset chính thức không kèm driver PostgreSQL,
+# nên dựng image mở rộng cài thêm psycopg2-binary vào môi trường ảo của Superset.
+FROM apache/superset:latest
+
+USER root
+
+# Kích hoạt môi trường ảo /app/.venv (nếu có) rồi cài driver bằng uv; nếu uv không có thì dùng pip.
+RUN if [ -f /app/.venv/bin/activate ]; then . /app/.venv/bin/activate; fi; \
+    (uv pip install psycopg2-binary || pip install psycopg2-binary)
+
+USER superset

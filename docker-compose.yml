@@ -1,0 +1,85 @@
+services:
+  zookeeper:
+    image: confluentinc/cp-zookeeper:7.6.0
+    container_name: zookeeper
+    environment:
+      ZOOKEEPER_CLIENT_PORT: 2181
+      ZOOKEEPER_TICK_TIME: 2000
+    ports:
+      - "2181:2181"
+
+  kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    container_name: kafka
+    depends_on:
+      - zookeeper
+    ports:
+      - "9092:9092"
+    environment:
+      KAFKA_BROKER_ID: 1
+      KAFKA_ZOOKEEPER_CONNECT: zookeeper:2181
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:29092,PLAINTEXT_HOST://localhost:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: PLAINTEXT:PLAINTEXT,PLAINTEXT_HOST:PLAINTEXT
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+
+  # Database NGUỒN (OLTP) — nơi script giả lập đơn hàng ghi dữ liệu vào.
+  # wal_level=logical là bắt buộc để Debezium đọc được Write-Ahead Log.
+  postgres-source:
+    image: debezium/postgres:16
+    container_name: postgres-source
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: source_user
+      POSTGRES_PASSWORD: source_pass
+      POSTGRES_DB: retail_source
+
+  # Database WAREHOUSE — chứa 3 schema bronze / silver / gold
+  postgres-warehouse:
+    image: postgres:16
+    container_name: postgres-warehouse
+    ports:
+      - "5434:5432"
+    environment:
+      POSTGRES_USER: dw_user
+      POSTGRES_PASSWORD: dw_pass
+      POSTGRES_DB: retail_warehouse
+
+  # Kafka Connect có sẵn plugin Debezium Postgres connector
+  kafka-connect:
+    image: debezium/connect:2.7.3.Final
+    container_name: kafka-connect
+    depends_on:
+      - kafka
+      - postgres-source
+    ports:
+      - "8083:8083"
+    environment:
+      BOOTSTRAP_SERVERS: kafka:29092
+      GROUP_ID: 1
+      CONFIG_STORAGE_TOPIC: connect_configs
+      OFFSET_STORAGE_TOPIC: connect_offsets
+      STATUS_STORAGE_TOPIC: connect_statuses
+
+  # Apache Superset — dashboard trên các bảng gold.*
+  # Khi thêm database trong Superset, dùng host "postgres-warehouse" và cổng 5432
+  # (cổng NỘI BỘ trong mạng Docker, không phải cổng 5434 đã map ra máy bạn).
+  # SUPERSET_SECRET_KEY đọc từ file .env nằm cạnh file này.
+  superset:
+    build:
+      context: .
+      dockerfile: Dockerfile.superset   # image Superset + driver PostgreSQL
+    image: retail-superset:local
+    container_name: superset
+    depends_on:
+      - postgres-warehouse
+    ports:
+      - "8088:8088"
+    environment:
+      SUPERSET_SECRET_KEY: ${SUPERSET_SECRET_KEY}
+    volumes:
+      - superset_home:/app/superset_home
+
+volumes:
+  superset_home:

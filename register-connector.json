@@ -1,0 +1,15 @@
+{
+  "name": "retail-orders-connector",
+  "config": {
+    "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+    "database.hostname": "postgres-source",
+    "database.port": "5432",
+    "database.user": "source_user",
+    "database.password": "source_pass",
+    "database.dbname": "retail_source",
+    "topic.prefix": "retail",
+    "plugin.name": "pgoutput",
+    "table.include.list": "public.orders",
+    "publication.autocreate.mode": "filtered"
+  }
+}
